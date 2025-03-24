@@ -1,82 +1,116 @@
 import re
 
-class LigacaoHidrogenio:
-    def __init__(self, resnr, restype, reschain, resnr_lig, restype_lig, reschain_lig, sidechain, dist_h_a, dist_d_a, don_angle, protisdon, donoridx, donortype, acceptoridx, acceptortype, ligcoo, protcoo):
-        self.resnr = resnr
-        self.restype = restype
-        self.reschain = reschain
-        self.resnr_lig = resnr_lig
-        self.restype_lig = restype_lig
-        self.reschain_lig = reschain_lig
-        self.sidechain = sidechain
-        self.dist_h_a = dist_h_a
-        self.dist_d_a = dist_d_a
-        self.don_angle = don_angle
-        self.protisdon = protisdon
-        self.donoridx = donoridx
-        self.donortype = donortype
-        self.acceptoridx = acceptoridx
-        self.acceptortype = acceptortype
-        self.ligcoo = ligcoo
-        self.protcoo = protcoo
+def parse_table_row(row):
+    """
+    Remove as barras verticais e divide a linha em colunas, removendo espaços.
+    """
+    # Remove a borda e divide pela barra vertical
+    parts = [p.strip() for p in row.strip().strip('|').split('|')]
+    return parts
 
-    def __repr__(self):
-        return f"{self.restype} {self.resnr} ({self.reschain}) - {self.restype_lig} {self.resnr_lig} ({self.reschain_lig})"
+def is_data_row(parts):
+    """
+    Considera a linha como de dados se a primeira coluna for numérica.
+    """
+    return parts and parts[0].isdigit()
 
-def parse_ligacoes_hidrogenio(linhas):
-    ligacoes = []
-    capturando = False  # Para saber quando estamos dentro da tabela
+def parse_hydrogen_bond_row(parts):
+    # Colunas: 0: RESNR, 1: RESTYPE, 2: RESCHAIN, 3: RESNR_LIG, 4: RESTYPE_LIG, 5: RESCHAIN_LIG, 7: DIST_H-A
+    if len(parts) < 8:
+        return None
+    return f"Residue: {parts[1]} {parts[2]} {parts[0]} | Ligand: {parts[4]} {parts[5]} {parts[3]} | Distance H-A: {parts[7]}"
 
-    for linha in linhas:
-        linha = linha.strip()
+def parse_hydrophobic_row(parts):
+    # Colunas: 0: RESNR, 1: RESTYPE, 2: RESCHAIN, 3: RESNR_LIG, 4: RESTYPE_LIG, 5: RESCHAIN_LIG, 6: DIST
+    if len(parts) < 7:
+        return None
+    return f"Residue: {parts[1]} {parts[2]} {parts[0]} | Ligand: {parts[4]} {parts[5]} {parts[3]} | Distance: {parts[6]}"
 
-        if "**Hydrogen Bonds**" in linha:
-            capturando = True  # Começa a capturar dados a partir daqui
-            continue
-        
-        if capturando:
-            if linha.startswith("+"):  # Linha delimitadora da tabela
-                continue
+def parse_salt_bridge_row(parts):
+    # Colunas: 0: RESNR, 1: RESTYPE, 2: RESCHAIN, 4: RESNR_LIG, 5: RESTYPE_LIG, 6: RESCHAIN_LIG, 7: DIST
+    if len(parts) < 8:
+        return None
+    return f"Residue: {parts[1]} {parts[2]} {parts[0]} | Ligand: {parts[5]} {parts[6]} {parts[4]} | Distance: {parts[7]}"
+
+def parse_pi_cation_row(parts):
+    # Colunas: 0: RESNR, 1: RESTYPE, 2: RESCHAIN, 4: RESNR_LIG, 5: RESTYPE_LIG, 6: RESCHAIN_LIG, 7: DIST
+    if len(parts) < 8:
+        return None
+    return f"Residue: {parts[1]} {parts[2]} {parts[0]} | Ligand: {parts[5]} {parts[6]} {parts[4]} | Distance: {parts[7]}"
+
+# Mapeia o nome da seção (como aparece entre ** **) para (título de saída, função parser)
+section_parsers = {
+    "Hydrogen Bonds": ("Hydrogen Bond:", parse_hydrogen_bond_row),
+    "Hydrophobic Interactions": ("Hydrophobic Interaction:", parse_hydrophobic_row),
+    "Salt Bridges": ("Salt Bridge:", parse_salt_bridge_row),
+    "pi-Cation Interactions": ("pi-Cation Interactions:", parse_pi_cation_row),
+    # Você pode adicionar outros mapeamentos, por exemplo:
+    # "Pi-Stacking": ("Pi-Stacking:", parse_pi_stacking_row),
+    # "Disulfide Bridge": ("Disulfide Bridge:", parse_disulfide_bridge_row),
+    # "Metal Coordination": ("Metal Coordination:", parse_metal_coordination_row),
+    # "Water Bridge": ("Water Bridge:", parse_water_bridge_row),
+    # "Halogen Bond": ("Halogen Bond:", parse_halogen_bond_row),
+}
+
+def process_plip_file(filename):
+    structure = None
+    results = {}  # chave: seção, valor: lista de linhas extraídas
+    current_section = None
+    current_parser = None
+
+    with open(filename, 'r') as file:
+        for line in file:
+            line = line.rstrip()
             
-            partes = linha.split("|")
-            if len(partes) < 17:  # Verifica se é uma linha válida de interação
+            # Captura a linha que indica a estrutura PDB, se ainda não foi definida
+            if not structure:
+                if line.startswith("Prediction of noncovalent interactions for PDB structure"):
+                    structure = line
+
+            # Detecta início de uma seção de interação (linha iniciada e terminada por **)
+            section_match = re.match(r"\*\*(.+?)\*\*", line)
+            if section_match:
+                sec_title = section_match.group(1).strip()
+                if sec_title in section_parsers:
+                    current_section = sec_title
+                    # Se já houver dados para essa seção, não reinitialize; senão, cria uma lista
+                    if current_section not in results:
+                        results[current_section] = []
+                    current_parser = section_parsers[sec_title][1]
+                else:
+                    current_section = None
+                    current_parser = None
                 continue
 
-            try:
-                # Remove espaços extras e extrai os valores
-                resnr = int(partes[1].strip())
-                restype = partes[2].strip()
-                reschain = partes[3].strip()
-                resnr_lig = int(partes[4].strip())
-                restype_lig = partes[5].strip()
-                reschain_lig = partes[6].strip()
-                sidechain = partes[7].strip() == "True"
-                dist_h_a = float(partes[8].strip())
-                dist_d_a = float(partes[9].strip())
-                don_angle = float(partes[10].strip())
-                protisdon = partes[11].strip() == "True"
-                donoridx = int(partes[12].strip())
-                donortype = partes[13].strip()
-                acceptoridx = int(partes[14].strip())
-                acceptortype = partes[15].strip()
-                ligcoo = partes[16].strip()
-                protcoo = partes[17].strip()
+            # Se estamos dentro de uma seção conhecida
+            if current_section and current_parser:
+                # Ignora linhas que são divisórias (iniciadas com '+' ou vazias ou formadas somente por '-' ou '=')
+                if line.startswith('+') or not line.strip() or set(line.strip()) <= set("-="):
+                    continue
 
-                ligacao = LigacaoHidrogenio(resnr, restype, reschain, resnr_lig, restype_lig, reschain_lig, sidechain, dist_h_a, dist_d_a, don_angle, protisdon, donoridx, donortype, acceptoridx, acceptortype, ligcoo, protcoo)
-                ligacoes.append(ligacao)
+                # Se a linha começa com '|' (possível linha da tabela)
+                if line.startswith('|'):
+                    parts = parse_table_row(line)
+                    if is_data_row(parts):
+                        parsed = current_parser(parts)
+                        if parsed:
+                            results[current_section].append(parsed)
+    return structure, results
 
-            except ValueError:
-                # Ignora linhas que não seguem o formato esperado
-                continue
-    
-    return ligacoes
+def print_results(structure, results):
+    # Imprime a estrutura PDB lida
+    if structure:
+        print(f"PDB Structure: {structure}\n")
+    # Para cada seção definida em section_parsers, imprime os dados acumulados, se houver
+    for sec, (title, _) in section_parsers.items():
+        if sec in results and results[sec]:
+            print(title)
+            for row in results[sec]:
+                print(row)
+            print()  # Linha em branco entre seções
 
-# Testando a função
-with open("report.txt", "r") as file:
-    linhas = file.readlines()
-
-ligacoes_hidrogenio = parse_ligacoes_hidrogenio(linhas)
-
-# Exibindo as ligações extraídas
-for lig in ligacoes_hidrogenio:
-    print(lig)
+if __name__ == '__main__':
+    # Substitua 'report.txt' pelo caminho do seu arquivo PLIP
+    filename = "report.txt"
+    structure, results = process_plip_file(filename)
+    print_results(structure, results)
