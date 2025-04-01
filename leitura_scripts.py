@@ -100,7 +100,7 @@ def process_plip_file(filename):
 def print_results(structure, results):
     # Imprime a estrutura PDB lida
     if structure:
-        print(f"PDB Structure: {structure}\n")
+        print(f"{structure}\n")
     # Para cada seção definida em section_parsers, imprime os dados acumulados, se houver
     for sec, (title, _) in section_parsers.items():
         if sec in results and results[sec]:
