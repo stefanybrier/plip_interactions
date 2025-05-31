@@ -16,16 +16,27 @@ Este projeto tem como objetivo a manipulação e modelagem de dados extraídos d
 ## 🗂️ Estrutura do Projeto
 
 ```
-📁 plip_interactions/
- ┣ 📂 classes/                 # Classes que representam interações biológicas
- ┣ 📂 utils/                   # Funções de leitura, parsing e manipulação
- ┣ main.py                    # Script principal de execução
- ┣ requirements.txt           # Dependências do projeto
-📁 tests/                      # Testes unitários
- ┣ test_leitura.py
- ┣ test_classes.py
-reports.txt                   # Arquivo de entrada com as interações
-README.md
+<!--
+📂 __pycache__/          # Arquivos temporários do Python
+📜 .env                  # Variáveis de ambiente (não deve ser versionado em produção)
+📜 .gitignore            # Arquivos e pastas ignorados no controle de versão
+📜 exemple.env           # Exemplo de arquivo .env para configuração local
+📜 files.py              # Módulo com funções gerais
+📜 interactions.py       # Módulo principal para manipulação de interações
+📜 LICENSE               # Licença do projeto
+📜 main.py               # Script principal de execução
+📜 report.txt            # Arquivo de entrada ou saída de interações
+
+📌 Observações
+
+✅ __pycache__/ é gerado automaticamente e geralmente ignorado no .gitignore.
+✅ .env deve conter variáveis sensíveis e não deve ser enviado ao repositório (use o exemple.env como base).
+✅ tabelas.py e tables.py parecem ter a mesma funcionalidade, apenas em idiomas diferentes — pode ser interessante padronizar.
+✅ interactions.py, files.py e main.py são os módulos principais do projeto.
+
+🚀 Projeto em desenvolvimento — contribuições são bem-vindas!
+-->
+
 ```
 
 ---
