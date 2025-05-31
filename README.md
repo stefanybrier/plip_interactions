@@ -16,7 +16,6 @@ Este projeto tem como objetivo a manipulação e modelagem de dados extraídos d
 ## 🗂️ Estrutura do Projeto
 
 ```
-<!--
 📂 __pycache__/          # Arquivos temporários do Python
 📜 .env                  # Variáveis de ambiente (não deve ser versionado em produção)
 📜 .gitignore            # Arquivos e pastas ignorados no controle de versão
@@ -35,7 +34,6 @@ Este projeto tem como objetivo a manipulação e modelagem de dados extraídos d
 ✅ interactions.py, files.py e main.py são os módulos principais do projeto.
 
 🚀 Projeto em desenvolvimento — contribuições são bem-vindas!
--->
 
 ```
 
